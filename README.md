@@ -45,12 +45,107 @@ o	Field 2 → EV Status
 
 
 ## MATLAB Code (Without MQTT Client Toolbox) 
+```
+clear;
+clc;
 
+%% ThingSpeak API Details
+writeAPIKey = 'V2S0VAJSKF2AWXV0';
+readAPIKey  = '93MNWOT35L9CPBWM';
+channelID   = '3114957';
+
+%% Remote Control Menu
+disp('Choose a remote function:');
+disp('1 - Lock Doors');
+disp('2 - Unlock Doors');
+disp('3 - Start Engine');
+disp('4 - Stop Engine');
+disp('5 - Turn On Lights');
+disp('6 - Turn Off Lights');
+
+choice = input('Enter your choice (1-6): ');
+
+%% Command Names
+commands = {
+    'LOCK'
+    'UNLOCK'
+    'START'
+    'STOP'
+    'LIGHT_ON'
+    'LIGHT_OFF'
+};
+
+%% Validate Choice
+if choice < 1 || choice > 6 || mod(choice,1) ~= 0
+    disp('Invalid choice. Please enter a number between 1 and 6.');
+    return;
+end
+
+commandSent = commands{choice};
+
+%% Send Command to ThingSpeak
+% Field 1 contains the command number
+url = ['https://api.thingspeak.com/update?api_key=', ...
+       writeAPIKey, '&field1=', num2str(choice)];
+
+try
+
+    %% Send HTTP Request
+    response = webread(url);
+
+    % Convert ThingSpeak response to a number
+    entryID = str2double(string(response));
+
+    %% Check Response
+    if ~isnan(entryID) && entryID > 0
+
+        disp(['Command Sent Successfully: ', commandSent]);
+        disp(['Command Number: ', num2str(choice)]);
+        disp(['ThingSpeak Entry ID: ', num2str(entryID)]);
+
+        %% Wait for ESP32
+        disp('Waiting for ESP32 response...');
+        pause(5);
+
+        %% Read EV Status from Field 2
+        statusURL = ['https://api.thingspeak.com/channels/', ...
+                     channelID, ...
+                     '/fields/2/last.txt?api_key=', ...
+                     readAPIKey];
+
+        try
+
+            evStatus = webread(statusURL);
+
+            disp(['EV Status: ', char(string(evStatus))]);
+
+        catch statusError
+
+            disp('Error reading EV status from ThingSpeak:');
+            disp(statusError.message);
+
+        end
+
+    else
+
+        disp('Failed to send command to ThingSpeak.');
+        disp(['ThingSpeak response: ', char(string(response))]);
+
+    end
+
+catch webError
+
+    disp('Error sending command to ThingSpeak:');
+    disp(webError.message);
+
+end
+```
 
 
 ## Output:
 
 
+<img width="1600" height="856" alt="image" src="https://github.com/user-attachments/assets/89ad86a1-18d2-495b-9f91-e614ed8688e5" />
 
 
 ## Result:
